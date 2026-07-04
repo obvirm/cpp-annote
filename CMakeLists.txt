@@ -12,6 +12,7 @@ target_include_directories(eigen_mpl2 INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/thi
 
 # ---- cnpy (NPZ / NPY, from third-party/) ------------------------------------
 add_library(cnpy_static STATIC "${CMAKE_CURRENT_SOURCE_DIR}/third-party/cnpy/cnpy.cpp")
+set_target_properties(cnpy_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(cnpy_static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/third-party/cnpy")
 find_package(ZLIB REQUIRED)
 target_link_libraries(cnpy_static PUBLIC ZLIB::ZLIB)
