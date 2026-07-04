@@ -71,6 +71,8 @@ class CppAnnoteEngine {
   CppAnnoteEngine& operator=(CppAnnoteEngine&&) = delete;
 
 private:
+  friend class StreamingDiarizationSession;
+
   /// Auto-detect and configure GPU provider (CUDA > TensorRT > CPU)
   void configure_gpu();
 
