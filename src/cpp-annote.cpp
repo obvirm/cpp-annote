@@ -630,13 +630,13 @@ CppAnnoteEngine::CppAnnoteEngine()
       session_options_{},
       session_(nullptr),
       mem_(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault)),
-      alloc_{},
-      in_name_(),
-      out_name_() {
+      alloc_{} {
   configure_gpu();
   session_ = make_segmentation_session(ort_env_, session_options_, "");
-  in_name_ = session_.GetInputNameAllocated(0, alloc_);
-  out_name_ = session_.GetOutputNameAllocated(0, alloc_);
+  Ort::AllocatedStringPtr in_name_tmp = session_.GetInputNameAllocated(0, alloc_);
+  Ort::AllocatedStringPtr out_name_tmp = session_.GetOutputNameAllocated(0, alloc_);
+  in_name_ = in_name_tmp.get();
+  out_name_ = out_name_tmp.get();
   init_config_and_models("");
 }
 
@@ -646,14 +646,14 @@ CppAnnoteEngine::CppAnnoteEngine(const std::string &segmentation_onnx_path,
       session_options_{},
       session_(nullptr),
       mem_(Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault)),
-      alloc_{},
-      in_name_(),
-      out_name_() {
+      alloc_{} {
   configure_gpu();
   session_ = make_segmentation_session(ort_env_, session_options_,
                                          segmentation_onnx_path);
-  in_name_ = session_.GetInputNameAllocated(0, alloc_);
-  out_name_ = session_.GetOutputNameAllocated(0, alloc_);
+  Ort::AllocatedStringPtr in_name_tmp = session_.GetInputNameAllocated(0, alloc_);
+  Ort::AllocatedStringPtr out_name_tmp = session_.GetOutputNameAllocated(0, alloc_);
+  in_name_ = in_name_tmp.get();
+  out_name_ = out_name_tmp.get();
   init_config_and_models(embedding_onnx_path);
 }
 
@@ -715,8 +715,8 @@ std::vector<float> CppAnnoteEngine::run_segmentation_ort_single(
       mem_, const_cast<float *>(chunk_buf),
       static_cast<size_t>(1 * num_channels * chunk_num_samples),
       in_shape.data(), in_shape.size());
-  const char *in_names[] = {in_name_.get()};
-  const char *out_names[] = {out_name_.get()};
+  const char *in_names[] = {in_name_.c_str()};
+  const char *out_names[] = {out_name_.c_str()};
   auto outs = session_.Run(Ort::RunOptions{nullptr}, in_names, &in_tensor, 1,
                            out_names, 1);
   float *op = outs[0].GetTensorMutableData<float>();

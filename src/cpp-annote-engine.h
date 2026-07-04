@@ -123,8 +123,8 @@ private:
   Ort::Session session_;
   Ort::MemoryInfo mem_;
   Ort::AllocatorWithDefaultOptions alloc_;
-  Ort::AllocatedStringPtr in_name_;
-  Ort::AllocatedStringPtr out_name_;
+  std::string in_name_;
+  std::string out_name_;
 
   int embed_sr_ = 16000;
   int embed_mel_bins_ = 80;
