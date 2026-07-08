@@ -16,9 +16,9 @@ set_target_properties(cnpy_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 set_target_properties(cnpy_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(cnpy_static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/third-party/cnpy")
 # Force static zlib on macOS (no runtime zlib to ship) — use brew libz.a from CI env.
-# On Windows, ZLIB_LIBRARY points at vcpkg's dynamic import lib (links zlib1.dll at runtime).
+# On Windows, ZLIB_USE_STATIC_LIBS=ON + ZLIB_LIBRARY points at vcpkg zlibstatic.lib.
 # On Linux, no override → system dynamic libz is used.
-if(APPLE AND DEFINED ENV{ZLIB_LIBRARY})
+if((APPLE OR WIN32) AND DEFINED ENV{ZLIB_USE_STATIC_LIBS} AND "$ENV{ZLIB_USE_STATIC_LIBS}" STREQUAL "ON")
   set(ZLIB_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
 endif()
 if(DEFINED ENV{ZLIB_LIBRARY})
