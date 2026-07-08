@@ -15,6 +15,7 @@ add_library(cnpy_static STATIC "${CMAKE_CURRENT_SOURCE_DIR}/third-party/cnpy/cnp
 set_target_properties(cnpy_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 set_target_properties(cnpy_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(cnpy_static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/third-party/cnpy")
+set(ZLIB_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
 find_package(ZLIB REQUIRED)
 target_link_libraries(cnpy_static PUBLIC ZLIB::ZLIB)
 
