@@ -15,12 +15,10 @@ add_library(cnpy_static STATIC "${CMAKE_CURRENT_SOURCE_DIR}/third-party/cnpy/cnp
 set_target_properties(cnpy_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 set_target_properties(cnpy_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(cnpy_static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/third-party/cnpy")
-# Force static zlib on macOS (no runtime zlib to ship) — use brew libz.a from CI env.
-# On Windows, ZLIB_USE_STATIC_LIBS=ON + ZLIB_LIBRARY points at vcpkg zlibstatic.lib.
-# On Linux, no override → system dynamic libz is used.
-if((APPLE OR WIN32) AND DEFINED ENV{ZLIB_USE_STATIC_LIBS} AND "$ENV{ZLIB_USE_STATIC_LIBS}" STREQUAL "ON")
-  set(ZLIB_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
-endif()
+# Pass explicit ZLIB paths from CI when provided:
+# - macOS: static libz.a (no runtime dependency to ship)
+# - Windows: zlib.lib import lib (requires zlib1.dll shipped at runtime)
+# - Linux: not set -> use system dynamic libz
 if(DEFINED ENV{ZLIB_LIBRARY})
   set(ZLIB_LIBRARY "$ENV{ZLIB_LIBRARY}" CACHE FILEPATH "" FORCE)
 endif()
@@ -240,7 +238,11 @@ if(CPPANNOTE_BUILD_SHARED)
     target_link_libraries(cpp_annote_shared PRIVATE
         cnpy_static "${ORT_LIBRARY}" eigen_mpl2 kaldi-native-fbank-core
     )
-    
+    # Windows: cpp_annote_shared must link zlib explicitly (cnpy_static's PUBLIC ZLIB::ZLIB
+    # may resolve to zlib.lib import lib, but file on disk is zlibstatic.lib). Force it.
+    if(WIN32 AND DEFINED ENV{ZLIB_LIBRARY})
+        target_link_libraries(cpp_annote_shared PRIVATE "$ENV{ZLIB_LIBRARY}")
+    endif()
     if(MSVC)
         target_compile_options(cpp_annote_shared PRIVATE /W3 /utf-8)
     else()
