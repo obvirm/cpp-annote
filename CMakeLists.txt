@@ -10,23 +10,40 @@ add_library(eigen_mpl2 INTERFACE)
 target_compile_definitions(eigen_mpl2 INTERFACE EIGEN_MPL2_ONLY=1)
 target_include_directories(eigen_mpl2 INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/third-party")
 
+# ---- vendored zlib (source-compiled, no external dependency) -------------
+# Builds zlib as a static lib (zlib_static) so Windows/Linux/macOS all get a
+# self-contained zlib with no runtime DLL to ship.
+add_library(zlib_static STATIC
+  "${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib/adler32.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib/compress.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib/crc32.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib/deflate.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib/gzclose.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib/gzlib.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib/gzread.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib/gzwrite.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib/infback.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib/inffast.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib/inflate.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib/inftrees.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib/trees.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib/uncompr.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib/zutil.c"
+)
+set_target_properties(zlib_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(zlib_static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib")
+if(MSVC)
+  # Use WIN32 API for file I/O (gzopen etc.) — matches zconf.h default on Windows
+  target_compile_definitions(zlib_static PRIVATE ZLIB_DLL=0)
+endif()
+
 # ---- cnpy (NPZ / NPY, from third-party/) ------------------------------------
 add_library(cnpy_static STATIC "${CMAKE_CURRENT_SOURCE_DIR}/third-party/cnpy/cnpy.cpp")
 set_target_properties(cnpy_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 set_target_properties(cnpy_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(cnpy_static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/third-party/cnpy")
-# Pass explicit ZLIB paths from CI when provided:
-# - macOS: static libz.a (no runtime dependency to ship)
-# - Windows: zlib.lib import lib (requires zlib1.dll shipped at runtime)
-# - Linux: not set -> use system dynamic libz
-if(DEFINED ENV{ZLIB_LIBRARY})
-  set(ZLIB_LIBRARY "$ENV{ZLIB_LIBRARY}" CACHE FILEPATH "" FORCE)
-endif()
-if(DEFINED ENV{ZLIB_INCLUDE_DIR})
-  set(ZLIB_INCLUDE_DIR "$ENV{ZLIB_INCLUDE_DIR}" CACHE PATH "" FORCE)
-endif()
-find_package(ZLIB REQUIRED)
-target_link_libraries(cnpy_static PUBLIC ZLIB::ZLIB)
+target_include_directories(cnpy_static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib")
+target_link_libraries(cnpy_static PUBLIC zlib_static)
 
 # ---- kissfft (from third-party/) ---------------------------------------------
 set(KISSFFT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third-party/kissfft")
@@ -238,11 +255,6 @@ if(CPPANNOTE_BUILD_SHARED)
     target_link_libraries(cpp_annote_shared PRIVATE
         cnpy_static "${ORT_LIBRARY}" eigen_mpl2 kaldi-native-fbank-core
     )
-    # Windows: cpp_annote_shared must link zlib explicitly (cnpy_static's PUBLIC ZLIB::ZLIB
-    # may resolve to zlib.lib import lib, but file on disk is zlibstatic.lib). Force it.
-    if(WIN32 AND DEFINED ENV{ZLIB_LIBRARY})
-        target_link_libraries(cpp_annote_shared PRIVATE "$ENV{ZLIB_LIBRARY}")
-    endif()
     if(MSVC)
         target_compile_options(cpp_annote_shared PRIVATE /W3 /utf-8)
     else()
