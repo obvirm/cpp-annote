@@ -670,6 +670,10 @@ void CppAnnoteEngine::configure_gpu() {
   // dideklarasikan di header ORT untuk platform terkait.
 
 #if defined(CPPANNOTE_ORT_CUDA) && (defined(_WIN32) || defined(__linux__))
+  // Include CUDA/TensorRT EP factory header kalau ada (paket ORT gpu cuda)
+  #if __has_include("cuda_provider_factory.h")
+  #include "cuda_provider_factory.h"
+  #endif
   // 1. CUDA (NVIDIA)
   try {
     OrtCUDAProviderOptions cuda_options;
@@ -688,6 +692,10 @@ void CppAnnoteEngine::configure_gpu() {
 #endif
 
 #ifdef CPPANNOTE_ORT_DML
+  // Include DirectML EP factory header kalau ada (paket ORT gpu cuda/dml)
+  #if __has_include("dml_provider_factory.h")
+  #include "dml_provider_factory.h"
+  #endif
   // 3. DirectML (Windows — NPU/IGPU/any GPU via Windows ML)
   try {
     OrtDMLProviderOptions dml_options;
@@ -698,16 +706,25 @@ void CppAnnoteEngine::configure_gpu() {
 #endif
 
 #ifdef __APPLE__
-  // 4. CoreML (macOS — Apple Neural Engine)
+  // Include CoreML EP factory header (ada di paket ORT osx)
+  #if __has_include("coreml_provider_factory.h")
+  #include "coreml_provider_factory.h"
+  #endif
+  // 4. CoreML (macOS — Apple Neural Engine via CoreML EP)
+  //    ORT osx package hanya expose C API: OrtSessionOptionsAppendExecutionProvider_CoreML(options, flags)
   try {
-    OrtCoreMLProviderOptions coreml_options;
-    coreml_options.model_format = ORT_COREML_MODEL_FORMAT_NEURAL_NETWORK;
-    session_options_.AppendExecutionProvider_CoreML(coreml_options);
+    // COREML_FLAG_ONLY_ENABLE_DEVICE_WITH_ANE -> paksa ANE (NPU Apple)
+    session_options_.AppendExecutionProvider_CoreML(
+        static_cast<uint32_t>(0x004) /* COREML_FLAG_ONLY_ENABLE_DEVICE_WITH_ANE */);
     return;
   } catch (...) {}
 #endif
 
 #ifdef CPPANNOTE_ORT_OPENVINO
+  // Include OpenVINO EP factory header kalau ada (paket ORT openvino)
+  #if __has_include("openvino_provider_factory.h")
+  #include "openvino_provider_factory.h"
+  #endif
   // 5. OpenVINO (Intel NPU / CPU)
   try {
     OrtOpenVINOProviderOptions ov_options;
@@ -718,7 +735,6 @@ void CppAnnoteEngine::configure_gpu() {
 #endif
 
   // 6. Fallback CPU (selalu tersedia, default ORT)
-  // CoreML struct hanya deklarasi di header macOS; guard sudah di atas.
 }
 
 // ---------------------------------------------------------------------------

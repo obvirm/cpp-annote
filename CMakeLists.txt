@@ -255,6 +255,8 @@ if(CPPANNOTE_BUILD_SHARED)
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
     )
     target_include_directories(cpp_annote_shared PRIVATE "${ORT_INCLUDE_DIR}")
+    # Include EP factory headers (CoreML/DirectML/OpenVINO/CUDA) kalau ada di paket ORT
+    target_include_directories(cpp_annote_shared PRIVATE "${ORT_INCLUDE_DIR}/../include")
     target_link_libraries(cpp_annote_shared PRIVATE
         cnpy_static "${ORT_LIBRARY}" eigen_mpl2 kaldi-native-fbank-core
     )
