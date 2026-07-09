@@ -28,10 +28,9 @@ add_library(zlib_static STATIC
 )
 set_target_properties(zlib_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(zlib_static PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/third-party/zlib")
-if(MSVC)
-  # Use WIN32 API for file I/O (gzopen etc.) — matches zconf.h default on Windows
-  target_compile_definitions(zlib_static PRIVATE ZLIB_DLL=0)
-endif()
+# NOTE: Do NOT define ZLIB_DLL here. Defining it (even =0) makes zlib.h use
+# __declspec(dllimport) and forces a runtime dependency on z.dll. For a STATIC
+# zlib we want plain `extern` so it links directly into cnpy_static.
 
 # ---- cnpy (NPZ / NPY, from third-party/) ------------------------------------
 add_library(cnpy_static STATIC "${CMAKE_CURRENT_SOURCE_DIR}/third-party/cnpy/cnpy.cpp")
