@@ -223,6 +223,14 @@ target_link_libraries(knf_smoke_test PRIVATE kaldi-native-fbank-core)
 
 option(CPPANNOTE_BUILD_SHARED "Build shared library (cpp-annote.dll/.so)" ON)
 
+# === ORT provider compile-time flags ===
+# Disesuaikan dengan paket ONNX Runtime yang di-download oleh build_cpp_annote.py.
+# Mencegah compile error saat header ORT tidak mendeklarasikan struct EP tertentu
+# (mis. DML hanya ada di paket GPU/DirectML, OpenVINO hanya di paket OpenVINO).
+option(CPPANNOTE_ORT_CUDA    "ORT CUDA provider available"            OFF)
+option(CPPANNOTE_ORT_DML     "ORT DirectML provider available (Win)" OFF)
+option(CPPANNOTE_ORT_OPENVINO "ORT OpenVINO provider available"       OFF)
+
 if(CPPANNOTE_BUILD_SHARED)
     # Same sources as CLI, but WITHOUT the embedded ORT models (52MB)
     # and WITHOUT the embedded CppAnnote config (2.5MB)
@@ -262,6 +270,15 @@ if(CPPANNOTE_BUILD_SHARED)
     )
     
     target_compile_definitions(cpp_annote_shared PRIVATE CPPANNOTE_BUILD_DLL CPPANNOTE_NO_EMBEDDED)
+    if(CPPANNOTE_ORT_CUDA)
+        target_compile_definitions(cpp_annote_shared PRIVATE CPPANNOTE_ORT_CUDA)
+    endif()
+    if(CPPANNOTE_ORT_DML)
+        target_compile_definitions(cpp_annote_shared PRIVATE CPPANNOTE_ORT_DML)
+    endif()
+    if(CPPANNOTE_ORT_OPENVINO)
+        target_compile_definitions(cpp_annote_shared PRIVATE CPPANNOTE_ORT_OPENVINO)
+    endif()
     
     if(APPLE)
         target_link_libraries(cpp_annote_shared PRIVATE "-framework Foundation")

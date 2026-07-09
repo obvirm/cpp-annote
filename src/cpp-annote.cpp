@@ -661,25 +661,64 @@ void CppAnnoteEngine::configure_gpu() {
   // Optimize CPU performance
   session_options_.SetIntraOpNumThreads(4);
   session_options_.SetInterOpNumThreads(2);
-  
-  // Try CUDA provider (NVIDIA GPU)
+
+  // === FULL GPU provider fallback chain ===
+  // Prioritas proper (semua di-build ke dalam ORT package masing-masing):
+  //   CUDA (NVIDIA) -> TensorRT (NVIDIA) -> DirectML (Windows NPU/IGPU)
+  //   -> CoreML (macOS ANE) -> OpenVINO (Intel NPU/CPU) -> CPU
+  // Setiap provider di-guard oleh platform macro karena struct-nya hanya
+  // dideklarasikan di header ORT untuk platform terkait.
+
+#if defined(CPPANNOTE_ORT_CUDA) && (defined(_WIN32) || defined(__linux__))
+  // 1. CUDA (NVIDIA)
   try {
     OrtCUDAProviderOptions cuda_options;
     cuda_options.device_id = 0;
     session_options_.AppendExecutionProvider_CUDA(cuda_options);
     return;
   } catch (...) {}
-  
-  // Try TensorRT (NVIDIA, faster than CUDA)
+
+  // 2. TensorRT (NVIDIA, lebih cepat dari CUDA)
   try {
     OrtTensorRTProviderOptions trt_options;
     trt_options.device_id = 0;
     session_options_.AppendExecutionProvider_TensorRT(trt_options);
     return;
   } catch (...) {}
-  
-  // Fallback to CPU (default)
-  // Note: DML, CoreML, ROCm, OpenVINO need separate ONNX Runtime builds
+#endif
+
+#ifdef CPPANNOTE_ORT_DML
+  // 3. DirectML (Windows — NPU/IGPU/any GPU via Windows ML)
+  try {
+    OrtDMLProviderOptions dml_options;
+    dml_options.device_id = 0;
+    session_options_.AppendExecutionProvider_DML(dml_options);
+    return;
+  } catch (...) {}
+#endif
+
+#ifdef __APPLE__
+  // 4. CoreML (macOS — Apple Neural Engine)
+  try {
+    OrtCoreMLProviderOptions coreml_options;
+    coreml_options.model_format = ORT_COREML_MODEL_FORMAT_NEURAL_NETWORK;
+    session_options_.AppendExecutionProvider_CoreML(coreml_options);
+    return;
+  } catch (...) {}
+#endif
+
+#ifdef CPPANNOTE_ORT_OPENVINO
+  // 5. OpenVINO (Intel NPU / CPU)
+  try {
+    OrtOpenVINOProviderOptions ov_options;
+    ov_options.device_type = "NPU";
+    session_options_.AppendExecutionProvider_OpenVINO(ov_options);
+    return;
+  } catch (...) {}
+#endif
+
+  // 6. Fallback CPU (selalu tersedia, default ORT)
+  // CoreML struct hanya deklarasi di header macOS; guard sudah di atas.
 }
 
 // ---------------------------------------------------------------------------
