@@ -34,6 +34,22 @@
 #include "plda_vbx.h"
 #include "wav_pcm_float32.h"
 
+// === EP factory headers (top-level, karena header punya extern "C" block) ===
+#if defined(_WIN32) && __has_include("cuda_provider_factory.h")
+#include "cuda_provider_factory.h"
+#endif
+#if defined(_WIN32) && __has_include("dml_provider_factory.h")
+#include "dml_provider_factory.h"
+#endif
+#if defined(_WIN32) && __has_include("openvino_provider_factory.h")
+#include "openvino_provider_factory.h"
+#endif
+#ifdef __APPLE__
+#if __has_include("coreml_provider_factory.h")
+#include "coreml_provider_factory.h"
+#endif
+#endif
+
 namespace cppannote {
 namespace {
 
@@ -670,10 +686,6 @@ void CppAnnoteEngine::configure_gpu() {
   // dideklarasikan di header ORT untuk platform terkait.
 
 #if defined(CPPANNOTE_ORT_CUDA) && (defined(_WIN32) || defined(__linux__))
-  // Include CUDA/TensorRT EP factory header kalau ada (paket ORT gpu cuda)
-  #if __has_include("cuda_provider_factory.h")
-  #include "cuda_provider_factory.h"
-  #endif
   // 1. CUDA (NVIDIA)
   try {
     OrtCUDAProviderOptions cuda_options;
@@ -692,10 +704,6 @@ void CppAnnoteEngine::configure_gpu() {
 #endif
 
 #ifdef CPPANNOTE_ORT_DML
-  // Include DirectML EP factory header kalau ada (paket ORT gpu cuda/dml)
-  #if __has_include("dml_provider_factory.h")
-  #include "dml_provider_factory.h"
-  #endif
   // 3. DirectML (Windows — NPU/IGPU/any GPU via Windows ML)
   try {
     OrtDMLProviderOptions dml_options;
@@ -706,25 +714,18 @@ void CppAnnoteEngine::configure_gpu() {
 #endif
 
 #ifdef __APPLE__
-  // Include CoreML EP factory header (ada di paket ORT osx)
-  #if __has_include("coreml_provider_factory.h")
-  #include "coreml_provider_factory.h"
-  #endif
   // 4. CoreML (macOS — Apple Neural Engine via CoreML EP)
   //    ORT osx package hanya expose C API: OrtSessionOptionsAppendExecutionProvider_CoreML(options, flags)
+  //    (gak ada wrapper C++ AppendExecutionProvider_CoreML di header osx).
   try {
-    // COREML_FLAG_ONLY_ENABLE_DEVICE_WITH_ANE -> paksa ANE (NPU Apple)
-    session_options_.AppendExecutionProvider_CoreML(
-        static_cast<uint32_t>(0x004) /* COREML_FLAG_ONLY_ENABLE_DEVICE_WITH_ANE */);
+    // COREML_FLAG_ONLY_ENABLE_DEVICE_WITH_ANE (0x004) -> paksa ANE (NPU Apple)
+    Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CoreML(
+        session_options_, static_cast<uint32_t>(0x004)));
     return;
   } catch (...) {}
 #endif
 
 #ifdef CPPANNOTE_ORT_OPENVINO
-  // Include OpenVINO EP factory header kalau ada (paket ORT openvino)
-  #if __has_include("openvino_provider_factory.h")
-  #include "openvino_provider_factory.h"
-  #endif
   // 5. OpenVINO (Intel NPU / CPU)
   try {
     OrtOpenVINOProviderOptions ov_options;
