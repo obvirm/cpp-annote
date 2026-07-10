@@ -40,8 +40,9 @@
 // Hanya DML yg butuh header terpisah (dml_provider_factory.h) — kita VENDOR di
 // third-party/onnxruntime-ep-headers/ supaya build Windows gak butuh paket ORT khusus.
 // CoreML di macOS cuma ada C API (OrtSessionOptionsAppendExecutionProvider_CoreML).
-#if defined(_WIN32) && __has_include("dml_provider_factory.h")
-#include "dml_provider_factory.h"
+#ifdef CPPANNOTE_ORT_DML
+// DML C API declaration (no Windows SDK d3d12.h dependency).
+#include "ort_dml_capi.h"
 #endif
 
 namespace cppannote {
