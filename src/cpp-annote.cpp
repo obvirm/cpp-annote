@@ -34,20 +34,14 @@
 #include "plda_vbx.h"
 #include "wav_pcm_float32.h"
 
-// === EP factory headers (top-level, karena header punya extern "C" block) ===
-#if (defined(_WIN32) || defined(__linux__)) && __has_include("cuda_provider_factory.h")
-#include "cuda_provider_factory.h"
-#endif
+// === EP factory headers ===
+// Struct OrtCUDAProviderOptions / OrtTensorRTProviderOptions / OrtOpenVINOProviderOptions
+// SUDAH didefinisikan di onnxruntime_c_api.h (selalu ada di semua paket ORT).
+// Hanya DML yg butuh header terpisah (dml_provider_factory.h) — kita VENDOR di
+// third-party/onnxruntime-ep-headers/ supaya build Windows gak butuh paket ORT khusus.
+// CoreML di macOS cuma ada C API (OrtSessionOptionsAppendExecutionProvider_CoreML).
 #if defined(_WIN32) && __has_include("dml_provider_factory.h")
 #include "dml_provider_factory.h"
-#endif
-#if (defined(_WIN32) || defined(__linux__)) && __has_include("openvino_provider_factory.h")
-#include "openvino_provider_factory.h"
-#endif
-#ifdef __APPLE__
-#if __has_include("coreml_provider_factory.h")
-#include "coreml_provider_factory.h"
-#endif
 #endif
 
 namespace cppannote {
@@ -686,8 +680,7 @@ void CppAnnoteEngine::configure_gpu() {
   // dideklarasikan di header ORT untuk platform terkait.
 
 #if defined(CPPANNOTE_ORT_CUDA) && (defined(_WIN32) || defined(__linux__))
-#if __has_include("cuda_provider_factory.h")
-  // 1. CUDA (NVIDIA)
+  // 1. CUDA (NVIDIA) — struct OrtCUDAProviderOptions ada di onnxruntime_c_api.h
   try {
     OrtCUDAProviderOptions cuda_options;
     cuda_options.device_id = 0;
@@ -703,18 +696,16 @@ void CppAnnoteEngine::configure_gpu() {
     return;
   } catch (...) {}
 #endif
-#endif
 
 #ifdef CPPANNOTE_ORT_DML
-#if __has_include("dml_provider_factory.h")
   // 3. DirectML (Windows — NPU/IGPU/any GPU via Windows ML)
+  //    Butuh dml_provider_factory.h (vendored) utk OrtDMLProviderOptions.
   try {
     OrtDMLProviderOptions dml_options;
     dml_options.device_id = 0;
     session_options_.AppendExecutionProvider_DML(dml_options);
     return;
   } catch (...) {}
-#endif
 #endif
 
 #ifdef __APPLE__
@@ -730,15 +721,13 @@ void CppAnnoteEngine::configure_gpu() {
 #endif
 
 #ifdef CPPANNOTE_ORT_OPENVINO
-#if __has_include("openvino_provider_factory.h")
-  // 5. OpenVINO (Intel NPU / CPU)
+  // 5. OpenVINO (Intel NPU / CPU) — struct ada di onnxruntime_c_api.h
   try {
     OrtOpenVINOProviderOptions ov_options;
     ov_options.device_type = "NPU";
     session_options_.AppendExecutionProvider_OpenVINO(ov_options);
     return;
   } catch (...) {}
-#endif
 #endif
 
   // 6. Fallback CPU (selalu tersedia, default ORT)
