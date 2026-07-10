@@ -45,6 +45,12 @@
 #include "ort_dml_capi.h"
 #endif
 
+#ifdef __APPLE__
+// CoreML C API (OrtSessionOptionsAppendExecutionProvider_CoreML) — ada di
+// header coreml_provider_factory.h (terinclude di paket ORT osx).
+#include "coreml_provider_factory.h"
+#endif
+
 namespace cppannote {
 namespace {
 
