@@ -1,9 +1,14 @@
 // Minimal DirectML C API declarations for cpp-annote.
-// Avoids pulling in dml_provider_factory.h (which requires the Windows SDK
-// d3d12.h / DirectML.h). We only need:
-//   - the OrtDmlApi struct (function pointers, forward-declared D3D types)
-//   - the OrtApi::GetExecutionProviderApi entry used to resolve it at runtime
-// so we never statically link against onnxruntime_providers_dml.lib.
+//
+// Avoids pulling in the real dml_provider_factory.h (which requires the Windows
+// SDK d3d12.h / DirectML.h headers). We only need the OrtDmlApi struct so we can
+// resolve the DirectML execution provider at *runtime* via
+// OrtApi::GetExecutionProviderApi("DML", ...). This means we never statically
+// link against onnxruntime_providers_dml.lib (which is absent from the public
+// GPU packages), so cpp_annote.dll links cleanly against just onnxruntime.lib.
+//
+// The D3D12/DML types are forward-declared as opaque pointers — the struct only
+// stores function pointers, so their full definitions are never required.
 #ifndef ORT_DML_CAPI_H
 #define ORT_DML_CAPI_H
 
@@ -13,20 +18,19 @@
 extern "C" {
 #endif
 
-// Forward declarations (the real types live in the Windows SDK; we only need
-// opaque pointers for the API struct below).
+// Opaque D3D12 / DirectML handles (full defs live in the Windows SDK).
 struct IDMLDevice;
 typedef struct IDMLDevice IDMLDevice;
 struct ID3D12CommandQueue;
 typedef struct ID3D12CommandQueue ID3D12CommandQueue;
+struct ID3D12Resource;
+typedef struct ID3D12Resource ID3D12Resource;
 
-// DML EP device options (DML2). We only use the default (device_id path via
-// OrtDmlApi::SessionOptionsAppendExecutionProvider_DML).
 struct OrtDmlDeviceOptions;
 typedef struct OrtDmlDeviceOptions OrtDmlDeviceOptions;
 
-// The DirectML execution provider API, obtained via
-// OrtApi::GetExecutionProviderApi("DML", 1, &api).
+// Mirrors the layout of onnxruntime's OrtDmlApi exactly (first member is
+// SessionOptionsAppendExecutionProvider_DML). Only the entry we use is called.
 struct OrtDmlApi {
   ORT_API2_STATUS(SessionOptionsAppendExecutionProvider_DML,
                   _In_ OrtSessionOptions* options, int device_id);
