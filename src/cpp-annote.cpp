@@ -706,13 +706,17 @@ void CppAnnoteEngine::configure_gpu() {
 
 #ifdef CPPANNOTE_ORT_DML
   // 3. DirectML (Windows — NPU/IGPU/any GPU via Windows ML)
-  //    ORT gak expose struct OrtDMLProviderOptions / C++ wrapper AppendExecutionProvider_DML
-  //    di paket GPU umum. Pakai C API: OrtSessionOptionsAppendExecutionProvider_DML(options, device_id).
-  //    session_options_ punya operator-> ke OrtSessionOptions* (Base<T>), jadi bisa di-pass langsung.
+  //    DML gak ada di base onnxruntime.lib (statis gak link onnxruntime_providers_dml.lib).
+  //    Resolve lewat OrtApi::GetExecutionProviderApi("DML", ...) secara runtime.
   try {
-    // session_options_ punya operator-> ke OrtSessionOptions* (Base<T>)
-    Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_DML(session_options_, 0));
-    return;
+    const OrtApi* api = OrtGetApiBase()->GetApi(ORT_API_VERSION);
+    OrtDmlApi* dml_api = nullptr;
+    Ort::ThrowOnError(api->GetExecutionProviderApi("DML", ORT_API_VERSION, (const void**)&dml_api));
+    if (dml_api) {
+      Ort::ThrowOnError(dml_api->SessionOptionsAppendExecutionProvider_DML(
+          static_cast<OrtSessionOptions*>(session_options_), 0));
+      return;
+    }
   } catch (...) {}
 #endif
 
